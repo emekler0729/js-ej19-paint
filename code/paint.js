@@ -115,3 +115,62 @@ controls.brushSize = function(cx) {
 
     return createElement('span', null, 'Brush size: ', select);
 };
+
+controls.save = function(cx) {
+    var link = createElement('a', {href: '/'}, 'Save');
+    function update() {
+        try {
+            link.href = cx.canvas.toDataURL();
+        } catch (e) {
+            if(e instanceof SecurityError) {
+                link.href = 'javascript:alert(' +
+                        JSON.stringify("Can't save: " + e.toString()) + ')';
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    link.addEventListener('mouseover', update);
+    link.addEventListener('focus', update);
+    return link;
+};
+
+function loadImageURL(cx, url) {
+    var image = document.createElement('img');
+    image.addEventListener('load', function() {
+        var color = cx.fillStyle, size = cx.lineWidth;
+        cx.canvas.width = image.width;
+        cx.canvas.height = image.height;
+        cx.drawImage(image, 0, 0);
+        cx.fillStyle = color;
+        cx.strokeStyle = color;
+        cx.lineWidth = size;
+    });
+    image.src = url;
+}
+
+controls.openFile = function(cx) {
+    var input = createElement('input', {type: 'file'});
+    input.addEventListener('change', function() {
+        if(input.files.length == 0) return;
+        var reader = new FileReader();
+        reader.addEventListener('load', function() {
+            loadImageURL(cx, reader.result);
+        });
+        reader.readAsDataURL(input.files[0]);
+    });
+    return createElement('div', null, 'Open file: ', input);
+};
+
+controls.openURL = function(cx) {
+    var input = createElement('input', {type: 'text'});
+    var form = createElement('form', null,
+        'Open URL: ', input,
+        createElement('button', {type: 'submit'}, 'load'));
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        loadImageURL(cx, input.value);
+    });
+    return form;
+};
