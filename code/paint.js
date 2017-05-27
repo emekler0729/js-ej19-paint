@@ -91,3 +91,27 @@ tools.Erase = function(event, cx) {
     });
 };
 
+controls.color = function(cx) {
+    var input = createElement('input', {type: 'color'});
+    input.addEventListener('change', function() {
+        cx.fillStyle = input.value;
+        cx.strokeStyle = input.value;
+    });
+    return createElement('span', null, 'Color: ', input);
+};
+
+controls.brushSize = function(cx) {
+    var select = createElement('select');
+    var sizes = [1, 2, 3, 5, 8, 12, 25, 35, 50, 75, 100];
+
+    sizes.forEach(function(size) {
+        select.appendChild(createElement('option', {value: size},
+            size + ' pixels'));
+    });
+
+    select.addEventListener('change', function() {
+        cx.lineWidth = select.value;
+    });
+
+    return createElement('span', null, 'Brush size: ', select);
+};
