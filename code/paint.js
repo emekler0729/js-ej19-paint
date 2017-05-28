@@ -240,6 +240,7 @@ tools.Rectangle = function(event, cx) {
 
     trackDrag(function(event) {
         var pos = {x: event.clientX, y: event.clientY};
+        pos = keepInBounds(pos, cx.canvas);
         var rect = rectangleFromPoints(pageStartPos, pos);
         setStyle(placeholder, {
             left: rect.left + 'px',
@@ -260,4 +261,16 @@ function rectangleFromPoints(a, b) {
             top: Math.min(a.y, b.y),
             width: Math.abs(a.x - b.x),
             height: Math.abs(a.y - b.y)};
+}
+
+function keepInBounds(point, element) {
+    var rect = element.getBoundingClientRect();
+    var result = {};
+
+    result.x = point.x < rect.left ? rect.left : point.x;
+    result.x = point.x > rect.right ? rect.right : result.x;
+    result.y = point.y < rect.top ? rect.top : point.y;
+    result.y = point.y > rect.bottom ? rect.bottom : result.y;
+
+    return result;
 }
