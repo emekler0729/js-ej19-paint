@@ -21,6 +21,14 @@ function createElement(name, attributes) {
     return node;
 }
 
+function setStyle(node, styles) {
+    for(var style in styles) {
+        if(styles.hasOwnProperty(style)) {
+            node.style[style] = styles[style];
+        }
+    }
+}
+
 var controls = Object.create(null);
 
 function createPaint(parent) {
@@ -53,10 +61,12 @@ controls.tool = function(cx) {
     return createElement('span', null, 'Tool: ', select);
 };
 
-function relativePos(event, element) {
-    var rect = element.getBoundingClientRect();
-    return {x: Math.floor(event.clientX - rect.left),
-            y: Math.floor(event.clientY - rect.top)};
+function relativePos(event, canvas) {
+    var rect = canvas.getBoundingClientRect();
+    var xDelta = (rect.width - canvas.width) / 2;
+    var yDelta = (rect.height - canvas.height) / 2;
+    return {x: Math.floor(event.clientX - rect.left - xDelta),
+            y: Math.floor(event.clientY - rect.top - yDelta)};
 }
 
 function trackDrag(onMove, onEnd) {
@@ -215,12 +225,39 @@ function randomPointInRadius(radius) {
 }
 
 tools.Rectangle = function(event, cx) {
-    var startPos = relativePos(event, cx.canvas);
+    var canvasStartPos = relativePos(event, cx.canvas);
+    var pageStartPos = {x: event.clientX, y: event.clientY};
+    var placeholder = createElement('div');
+    setStyle(placeholder, {
+        background: cx.fillStyle,
+        position: 'absolute',
+        left: pageStartPos.x + 'px',
+        top: pageStartPos.y + 'px',
+        width: '1px',
+        height: '1px'
+    });
+    cx.canvas.parentNode.appendChild(placeholder);
 
-    trackDrag(null, function(event) {
-        var endPos = relativePos(event, cx.canvas);
-        var width = event.x - startPos.x;
-        var height = endPos.y - startPos.y;
-        cx.fillRect(startPos.x, startPos.y, width, height);
+    trackDrag(function(event) {
+        var pos = {x: event.clientX, y: event.clientY};
+        var rect = rectangleFromPoints(pageStartPos, pos);
+        setStyle(placeholder, {
+            left: rect.left + 'px',
+            top: rect.top + 'px',
+            width: rect.width + 'px',
+            height: rect.height + 'px'
+        });
+    }, function(event) {
+        var canvasEndPos = relativePos(event, cx.canvas);
+        var rect = rectangleFromPoints(canvasStartPos, canvasEndPos);
+        cx.fillRect(rect.left, rect.top, rect.width, rect.height);
+        cx.canvas.parentNode.removeChild(placeholder);
     })
 };
+
+function rectangleFromPoints(a, b) {
+    return {left: Math.min(a.x, b.x),
+            top: Math.min(a.y, b.y),
+            width: Math.abs(a.x - b.x),
+            height: Math.abs(a.y - b.y)};
+}
