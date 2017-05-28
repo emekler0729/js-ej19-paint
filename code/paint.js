@@ -213,3 +213,14 @@ function randomPointInRadius(radius) {
         }
     }
 }
+
+tools.Rectangle = function(event, cx) {
+    var startPos = relativePos(event, cx.canvas);
+
+    trackDrag(null, function(event) {
+        var endPos = relativePos(event, cx.canvas);
+        var width = event.x - startPos.x;
+        var height = endPos.y - startPos.y;
+        cx.fillRect(startPos.x, startPos.y, width, height);
+    })
+};
