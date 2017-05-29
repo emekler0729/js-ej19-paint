@@ -498,13 +498,12 @@ Color.prototype.toDOMString = function() {
  * @param event The mousedown event which initialized the handler.
  * @param cx The 2DCanvasContext for the canvas in which the pixel color is to be detected.
  */
-//@TODO Address the possible security exception.
 tools['Color Matcher'] = function(event, cx) {
     var pos = relativePos(event, cx.canvas);
     var color = pixelColor(pos, cx);
+
     cx.fillStyle = cx.strokeStyle = color.toContextString();
-    var picker = document.getElementById('color');
-    picker.value = color.toDOMString();
+    document.getElementById('color').value = color.toDOMString();
 };
 
 /**
@@ -516,6 +515,124 @@ tools['Color Matcher'] = function(event, cx) {
  * @returns {Color} Color object {{r: number, g: number, b: number, a: number}}.
  */
 function pixelColor(coord, cx) {
-    var data = cx.getImageData(coord.x, coord.y, 1, 1).data;
+    try {
+        var data = cx.getImageData(coord.x, coord.y, 1, 1).data;
+    } catch(e) {
+        if(e instanceof SecurityError) {
+            alert(JSON.stringify("Can't access image data: " + e.toString()));
+        } else {
+            throw e;
+        }
+    }
+
     return new Color(data[0], data[1], data[2], data[3])
+}
+
+/**
+ * Vector object encapsulates an (x, y) coordinate and provides methods to do vector math.
+ * @param x number
+ * @param y number
+ */
+function Vector(x, y) {
+    this.x = x;
+    this.y = y;
+}
+
+/**
+ * Returns a new vector that is the result of this vector plus the vector supplied to this method.
+ *
+ * @param other Another vector or coordinate object {{x: number, y: number}} to be added to this vector.
+ * @returns {Vector} A new vector with the result of the addition.
+ */
+Vector.prototype.plus = function(other) {
+    return new Vector(this.x + other.x, this.y + other.y);
+};
+
+/**
+ * A collection of direction names mapped to vectors which can be added to traverse a spatial data set.
+ */
+var directions = {
+    'n': new Vector( 0, -1),
+    'e': new Vector( 1,  0),
+    's': new Vector( 0,  1),
+    'w': new Vector(-1,  0)
+};
+
+/**
+ * An array of valid direction names.
+ */
+var directionNames = 'n e s w'.split(' ');
+
+/**
+ * Returns a boolean indicating if two color objects are equal.
+ * @param other A color object.
+ * @returns {boolean} A boolean indicating if two color objects are equal.
+ */
+Color.prototype.equals = function(other) {
+    return this.r === other.r &&
+            this.g === other.g &&
+            this.b === other.b &&
+            this.a === other.a;
+};
+
+/**
+ * The fill tool handler starts the mouse down event point and traverses the canvas outward, replacing every pixel
+ * that matches the origin pixel's color with the current fill color. The fill does not cross boundaries of pixels
+ * that do not match the origin pixel's color.
+ *
+ * @param event The mouse down event that initialized the handler.
+ * @param cx The 2DCanvasContext of the canvas in which the fill will occur.
+ */
+//@TODO Optimize fill algorithm by reducing calls to pixelColor. Get all image data in one call.
+tools.Fill = function(event, cx) {
+    var origin = relativePos(event, cx.canvas);
+    var matchColor = pixelColor(origin, cx);
+    var searched = {};
+
+    function flood(coordinates) {
+        var matches = [];
+
+        coordinates.forEach(function(coordinate) {
+            directionNames.forEach(function(direction) {
+                var target = keepInCanvasBounds(directions[direction].plus(coordinate), cx.canvas);
+                var id = 'px' + target.x.toString() + 'y' + target.y.toString();
+                if(searched[id] !== true) {
+                    searched[id] = true;
+                    var targetColor = pixelColor(target, cx);
+
+                    if (targetColor.equals(matchColor)) {
+                        matches.push(target);
+                        cx.fillRect(target.x, target.y, 1, 1);
+                    }
+                }
+            });
+        });
+
+        if(matches.length > 0) {
+            flood(matches);
+        }
+    }
+
+    cx.fillRect(origin.x, origin.y, 1, 1);
+    flood([origin]);
+};
+
+/**
+ * The keepInCanvasBounds function operates similarly to the keepInBounds function except that it works within the
+ * relative coordinate system of the canvas instead of the absolute coordinate system of the DOM client. If the
+ * supplied point is outside of the canvas bounds, the nearest point within bounds will be returned.
+ *
+ * @param point The point to be evaluated.
+ * @param canvas The canvas in which the point should fall.
+ * @returns {{x: number, y: number}} The original point or the nearest in bounds point.
+ */
+function keepInCanvasBounds(point, canvas) {
+    var result = {};
+
+    result.x = point.x < 0 ? 0 : point.x;
+    result.x = point.x > canvas.width ? canvas.width : result.x;
+    result.y = point.y < 0 ? 0 : point.y;
+    result.y = point.y > canvas.height ? canvas.height : result.y;
+
+    return result;
 }
