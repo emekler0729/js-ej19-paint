@@ -102,7 +102,7 @@ tools.Erase = function(event, cx) {
 };
 
 controls.color = function(cx) {
-    var input = createElement('input', {type: 'color'});
+    var input = createElement('input', {type: 'color', id: 'color'});
     input.addEventListener('change', function() {
         cx.fillStyle = input.value;
         cx.strokeStyle = input.value;
@@ -273,4 +273,40 @@ function keepInBounds(point, element) {
     result.y = point.y > rect.bottom ? rect.bottom : result.y;
 
     return result;
+}
+
+function Color(r, g, b, a) {
+    this.r = r;
+    this.g = g;
+    this.b = b;
+    this.a = a;
+}
+
+Color.prototype.toContextString = function() {
+    return 'rgb(' + this.r + ', ' + this.g + ', ' + this.b + ')';
+};
+
+Color.prototype.toDOMString = function() {
+    var result = '#';
+    var val = 'r g b'.split(' ');
+
+    for(var i = 0; i < val.length; i++) {
+        var stub = '0' + this[val[i]].toString(16);
+        result += stub.slice(-2);
+    }
+
+    return result;
+};
+
+tools.ColorMatcher = function(event, cx) {
+    var color = pixelColor(event, cx);
+    cx.fillStyle = cx.strokeStyle = color.toContextString();
+    var picker = document.getElementById('color');
+    picker.value = color.toDOMString();
+};
+
+function pixelColor(event, cx) {
+    var pos = relativePos(event, cx.canvas);
+    var data = cx.getImageData(pos.x, pos.y, 1, 1).data;
+    return new Color(data[0], data[1], data[2], data[3])
 }
